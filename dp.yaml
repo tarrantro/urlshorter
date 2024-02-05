@@ -1,0 +1,109 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+  name: my-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: urlshorter.randomcloud123.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: my-svc
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-svc
+spec:
+  internalTrafficPolicy: Cluster
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  publishNotReadyAddresses: true
+  selector:
+    app: myapp
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-headlesssvc
+spec:
+  clusterIP: None
+  clusterIPs:
+  - None
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  publishNotReadyAddresses: true
+  selector:
+    app: myapp
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: test-container
+        image: tarrantro/urlshorter:0.0.4
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /node
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 3
+        env:
+          - name: HOST_ADDRESS
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NODE_LIST
+            value: "my-headlesssvc.default.svc.cluster.local:8080"
+          - name: AWS_ACCESS_KEY_ID
+            value: ""
+          - name: AWS_SECRET_ACCESS_KEY
+            value: ""
+          - name: AWS_REGION
+            value: "us-east-2"
+          - name: URL_DOMAIN
+            value: ""
