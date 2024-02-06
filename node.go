@@ -92,22 +92,24 @@ func node() (*Node, error) {
 		for _, i := range hList {
 			if i.ID == id {
 				h := i.Host
-				resp, err := http.Get(fmt.Sprintf("%s/node", h))
-				defer resp.Body.Close()
-				if err != nil {
-					return nil, fmt.Errorf("GET id from node %s error: %v", h, err)
-				}
+				if h != hostname {
+					resp, err := http.Get(fmt.Sprintf("%s/node", h))
+					defer resp.Body.Close()
+					if err != nil {
+						return nil, fmt.Errorf("GET id from node %s error: %v", h, err)
+					}
 
-				data, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return nil, fmt.Errorf("Read body from node %s :error %v", h, err)
-				}
-				tid, err := strconv.Atoi(string(data))
-				if err != nil {
-					return nil, fmt.Errorf("Read data from node %s :error %v", h, err)
-				}
-				if tid == id {
-					id += 1
+					data, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return nil, fmt.Errorf("Read body from node %s :error %v", h, err)
+					}
+					tid, err := strconv.Atoi(string(data))
+					if err != nil {
+						return nil, fmt.Errorf("Read data from node %s :error %v", h, err)
+					}
+					if tid == id {
+						id += 1
+					}
 				}
 			}
 		}
